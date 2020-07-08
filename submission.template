@@ -1,0 +1,30 @@
+#include <cstdlib>
+#include <ctime>
+#include <iostream>
+#include <fstream>
+
+%Code%
+
+int main() {
+	%ClassName% solver;
+	%Input%
+	%Output%
+
+	std::ios_base::sync_with_stdio(false);
+	std::cin.tie(nullptr);
+	srand(time(nullptr));
+	out << std::fixed << std::setprecision(16);
+	if (%ClassName%::kMultiTest) {
+		size_t tests_count;
+		in >> tests_count;
+		for (size_t test_id : inclusiveRange<size_t>(1, tests_count)) {
+			if (%ClassName%::kWriteCaseNumber) {
+				out << "Case #" << test_id << ": ";
+			}
+			solver.solve(in, out);
+		}
+	} else {
+		%SolverCall%
+	}
+	return 0;
+}

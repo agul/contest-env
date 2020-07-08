@@ -1,0 +1,179 @@
+#ifdef USE_JNGEN
+#include <jngen/jngen.h>
+#endif
+
+#include "%TaskFile%"
+
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <cctype>
+#include <ctime>
+
+enum class Format : uint8_t {
+	DEFAULT = 0,
+	BOLD = 1,
+	ITALIC = 3,
+	UNDERLINE = 4,
+
+	BLACK = 30,
+	RED = 31,
+	GREEN = 32,
+	YELLOW = 33,
+	BLUE = 34,
+	MAGENTA = 35,
+	CYAN = 36,
+	WHITE = 37
+};
+
+std::ostream& operator <<(std::ostream& os, const Format color) {
+	return os << "\033[" << static_cast<uint32_t>(color) << "m";
+}
+
+namespace jhelper {
+
+struct Test {
+	std::string input;
+	std::string output;
+	bool active;
+	bool has_output;
+};
+
+bool check_is_equal(std::string expected_output, std::string actual_output) {
+	while (!expected_output.empty() && isspace(*--expected_output.end()))
+		expected_output.erase(--expected_output.end());
+	while (!actual_output.empty() && isspace(*--actual_output.end()))
+		actual_output.erase(--actual_output.end());
+	return expected_output == actual_output;
+}
+
+struct TestRunResult {
+	double elapsed_time;
+	bool is_ok;
+};
+
+TestRunResult run_test(const Test& test) {
+	std::cout << "Input: \n" << test.input << std::endl;
+	if (test.has_output) {
+		std::cout << "Expected output: \n" << test.output << std::endl;
+	} else {
+		std::cout << "Expected output: \n" << "N/A" << std::endl;
+	}
+
+	std::stringstream in(test.input);
+	std::ostringstream out;
+	std::clock_t start = std::clock();
+
+	%ClassName% solver;
+	if (%ClassName%::kMultiTest) {
+		size_t tests_count;
+		in >> tests_count;
+		for (size_t test_id : inclusiveRange<size_t>(1, tests_count)) {
+			if (%ClassName%::kWriteCaseNumber) {
+				out << "Case #" << test_id << ": ";
+			}
+			solver.solve(in, out);
+		}
+	} else {
+		%SolverCall%
+	}
+
+	std::clock_t finish = std::clock();
+	const double current_time = double(finish - start) / CLOCKS_PER_SEC;
+	std::cout << "Actual output: \n" << out.str() << std::endl;
+
+	bool test_result = false;
+	if (test.has_output && !%ClassName%::kUseCustomChecker) {
+		test_result = jhelper::check_is_equal(test.output, out.str());
+	} else {
+		test_result = solver.check(std::istringstream{test.input}, std::istringstream{test.output}, std::istringstream{out.str()});
+	}
+	std::cout << "Result: "
+			<< (test_result ? Format::CYAN : Format::RED)
+			<< (test_result ? "OK" : "Wrong answer")
+			<< Format::DEFAULT << std::endl;
+	std::cout << "Time: " << current_time << " s." << std::endl;
+	std::cout << std::endl;
+
+	return {current_time, test_result};
+}
+
+}  // namespace jhelper
+
+int main() {
+
+	srand(time(nullptr));
+	std::cout << std::fixed;
+
+	std::vector<jhelper::Test> tests = {
+		%Tests%
+	};
+
+	double max_run_time = 0.0;
+	bool all_ok = true;
+	size_t test_id = 0;
+	size_t skipped_count = 0;
+
+	std::vector<size_t> failed_tests;
+
+	for (const jhelper::Test& test : tests) {
+		std::cout << Format::BOLD << Format::MAGENTA << "Test #" << test_id << Format::DEFAULT << std::endl;
+
+		if (!test.active) {
+			std::cout << Format::YELLOW << "SKIPPED\n" << Format::DEFAULT << std::endl;
+			++skipped_count;
+			++test_id;
+			continue;
+		}
+
+		const jhelper::TestRunResult test_run_result = jhelper::run_test(test);
+		max_run_time = std::max(max_run_time, test_run_result.elapsed_time);
+		all_ok &= test_run_result.is_ok;
+		if (!test_run_result.is_ok) {
+			failed_tests.emplace_back(test_id);
+			if (%ClassName%::kStopAfterFirstFail) {
+				break;
+			}
+		}
+
+		++test_id;
+	}
+
+	for (size_t i : range(%ClassName%::kGeneratedTestsCount)) {
+		std::cout << Format::BOLD << Format::MAGENTA << "Test #" << test_id << Format::DEFAULT << std::endl;
+
+		std::ostringstream generated_test;
+		%ClassName%::generate_test(generated_test);
+		auto test = jhelper::Test{generated_test.str(), "", true, false};
+
+		const jhelper::TestRunResult test_run_result = jhelper::run_test(test);
+		max_run_time = std::max(max_run_time, test_run_result.elapsed_time);
+		all_ok &= test_run_result.is_ok;
+		if (!test_run_result.is_ok) {
+			failed_tests.emplace_back(test_id);
+			if (%ClassName%::kStopAfterFirstFail) {
+				break;
+			}
+		}
+
+		++test_id;
+	}
+
+	if (all_ok) {
+		auto tests_count_to_str = [](const size_t tests_count) {
+			return std::to_string(tests_count) + " test" + (tests_count > 1 ? "s" : "");
+		};
+		std::cout << Format::BOLD << Format::GREEN << tests_count_to_str(test_id - skipped_count) << " OK" << Format::DEFAULT << std::endl;
+		std::cout << Format::YELLOW << tests_count_to_str(skipped_count) << " skipped" << Format::DEFAULT << std::endl;
+	} else {
+		std::cout << Format::BOLD << Format::RED << "Some cases failed:" << Format::DEFAULT << std::endl;
+		for (const size_t test_id : failed_tests) {
+			std::cout << Format::RED << "Test #" << test_id << Format::DEFAULT << std::endl;
+		}
+	}
+
+	std::cout << "Maximal time: " << max_run_time << "s." << std::endl;
+	return 0;
+}
