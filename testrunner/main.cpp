@@ -2,7 +2,7 @@
 #include <jngen/jngen.h>
 #endif
 
-#include "/Users/agul/dev/olimp/test/tasks/EMultiplication4.cpp"
+#include "../tasks/AUrokiGrammatiki.cpp"
 
 #include <iostream>
 #include <fstream>
@@ -29,7 +29,11 @@ enum class Format : uint8_t {
 };
 
 std::ostream& operator <<(std::ostream& os, const Format color) {
-	return os << "\033[" << static_cast<uint32_t>(color) << "m";
+#ifdef __MINGW64__
+    return os;
+#else
+    return os << "\033[" << static_cast<uint32_t>(color) << "m";
+#endif
 }
 
 namespace jhelper {
@@ -66,12 +70,14 @@ TestRunResult run_test(const Test& test) {
 	std::ostringstream out;
 	std::clock_t start = std::clock();
 
-	EMultiplication4 solver;
-	if (EMultiplication4::kMultiTest) {
+    out << std::fixed << std::setprecision(16);
+
+	AUrokiGrammatiki solver;
+	if (AUrokiGrammatiki::kMultiTest) {
 		size_t tests_count;
 		in >> tests_count;
 		for (size_t test_id : inclusiveRange<size_t>(1, tests_count)) {
-			if (EMultiplication4::kWriteCaseNumber) {
+			if (AUrokiGrammatiki::kWriteCaseNumber) {
 				out << "Case #" << test_id << ": ";
 			}
 			solver.solve(in, out);
@@ -85,7 +91,7 @@ TestRunResult run_test(const Test& test) {
 	std::cout << "Actual output: \n" << out.str() << std::endl;
 
 	bool test_result = false;
-	if (test.has_output && !EMultiplication4::kUseCustomChecker) {
+	if (test.has_output && !AUrokiGrammatiki::kUseCustomChecker) {
 		test_result = jhelper::check_is_equal(test.output, out.str());
 	} else {
 		test_result = solver.check(std::istringstream{test.input}, std::istringstream{test.output}, std::istringstream{out.str()});
@@ -100,6 +106,10 @@ TestRunResult run_test(const Test& test) {
 	return {current_time, test_result};
 }
 
+void run_all_tests(const std::vector<Test>& tests, std::vector<size_t>& failed_tests) {
+
+}
+
 }  // namespace jhelper
 
 int main() {
@@ -108,7 +118,7 @@ int main() {
 	std::cout << std::fixed;
 
 	std::vector<jhelper::Test> tests = {
-		{"4 2\n1 2 -3 -4\n", "12\n", true, true},{"4 3\n-1 -2 -3 -4\n", "1000000001\n", true, true},{"2 1\n-1 1000000000\n", "1000000000\n", true, true},{"10 10\n1000000000 100000000 10000000 1000000 100000 10000 1000 100 10 1\n", "999983200\n", true, true},{"16 8\n-7 0 4 -2 -8 4 9 -4 1 5 -7 5 6 -6 -9 -4", "4762800", true, true},{"5 4\n-10 -6 4 -3 10", "2400", true, true},{"2 2\n-2 4", "999999999", true, true},{"4 4\n2 4 1 -1", "999999999", true, true},{"1 1\n-8", "999999999", true, true},{"1 1\n8", "8", true, true},{"2 1\n-8 -7", "1000000000", true, true},{"2 2\n-8 -7", "56", true, true},{"2 1\n8 7", "8", true, true},{"2 2\n8 7", "56", true, true},{"5 0\n1 1 1 1 1", "1", true, true},{"3 3\n1 2 -4", "999999999", true, true},{"3 3\n1 -2 -3", "6", true, true},
+		{"petr\n", "YES\n", true, true},{"etis atis animatis etis atis amatis\n", "NO\n", true, true},{"nataliala kataliala vetra feinites\n", "YES\n", true, true},
 	};
 
 	double max_run_time = 0.0;
@@ -133,7 +143,7 @@ int main() {
 		all_ok &= test_run_result.is_ok;
 		if (!test_run_result.is_ok) {
 			failed_tests.emplace_back(test_id);
-			if (EMultiplication4::kStopAfterFirstFail) {
+			if (AUrokiGrammatiki::kStopAfterFirstFail) {
 				break;
 			}
 		}
@@ -141,25 +151,27 @@ int main() {
 		++test_id;
 	}
 
-	for (size_t i : range(EMultiplication4::kGeneratedTestsCount)) {
-		std::cout << Format::BOLD << Format::MAGENTA << "Test #" << test_id << Format::DEFAULT << std::endl;
+	if (failed_tests.empty() || !AUrokiGrammatiki::kStopAfterFirstFail) {
+        for (size_t i : range(AUrokiGrammatiki::kGeneratedTestsCount)) {
+            std::cout << Format::BOLD << Format::MAGENTA << "Test #" << test_id << Format::DEFAULT << std::endl;
 
-		std::ostringstream generated_test;
-		EMultiplication4::generate_test(generated_test);
-		auto test = jhelper::Test{generated_test.str(), "", true, false};
+            std::ostringstream generated_test;
+            AUrokiGrammatiki::generate_test(generated_test);
+            auto test = jhelper::Test{generated_test.str(), "", true, false};
 
-		const jhelper::TestRunResult test_run_result = jhelper::run_test(test);
-		max_run_time = std::max(max_run_time, test_run_result.elapsed_time);
-		all_ok &= test_run_result.is_ok;
-		if (!test_run_result.is_ok) {
-			failed_tests.emplace_back(test_id);
-			if (EMultiplication4::kStopAfterFirstFail) {
-				break;
-			}
-		}
+            const jhelper::TestRunResult test_run_result = jhelper::run_test(test);
+            max_run_time = std::max(max_run_time, test_run_result.elapsed_time);
+            all_ok &= test_run_result.is_ok;
+            if (!test_run_result.is_ok) {
+                failed_tests.emplace_back(test_id);
+                if (AUrokiGrammatiki::kStopAfterFirstFail) {
+                    break;
+                }
+            }
 
-		++test_id;
-	}
+            ++test_id;
+        }
+    }
 
 	if (all_ok) {
 		auto tests_count_to_str = [](const size_t tests_count) {
