@@ -19,7 +19,7 @@ file(GLOB_RECURSE HEADERS "algolib/cpplib/*.hpp" )
 include_directories(algolib)
 include_directories(algolib/cpplib)
 
-ADD_DEFINITIONS(-std=c++14)
+ADD_DEFINITIONS(-std=c++14 -O3)
 ADD_DEFINITIONS(-DHOME)
 
 add_executable(test ${TASKS} ${HEADERS})
